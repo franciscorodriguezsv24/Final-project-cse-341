@@ -1,0 +1,200 @@
+### ConferenceHub API - manual tests for the VS Code REST Client extension
+### Switch @host between local and production to run the same suite against either.
+
+@host = http://localhost:8080
+# @host = https://conferencehub-api.onrender.com
+
+### Root - service information
+GET {{host}}/
+
+### Health check
+GET {{host}}/health
+
+###############################################################################
+# SPEAKERS
+###############################################################################
+
+### Create a speaker (201)
+# @name createSpeaker
+POST {{host}}/speakers
+Content-Type: application/json
+
+{
+  "firstName": "Marta",
+  "lastName": "Contreras",
+  "email": "marta.contreras@example.com",
+  "organization": "Northwind Labs",
+  "jobTitle": "Principal Engineer",
+  "bio": "Marta has spent twelve years building distributed systems and teaches backend design.",
+  "photoUrl": "https://example.com/photos/marta-contreras.jpg"
+}
+
+### Capture the id returned above for the requests that follow
+@speakerId = {{createSpeaker.response.body.data._id}}
+
+### Get all speakers
+GET {{host}}/speakers
+
+### Filter speakers by organization
+GET {{host}}/speakers?organization=Northwind Labs
+
+### Get one speaker
+GET {{host}}/speakers/{{speakerId}}
+
+### Sessions for a speaker (empty until the sessions collection is added)
+GET {{host}}/speakers/{{speakerId}}/sessions
+
+### Replace a speaker (200)
+PUT {{host}}/speakers/{{speakerId}}
+Content-Type: application/json
+
+{
+  "firstName": "Marta",
+  "lastName": "Contreras-Diaz",
+  "email": "marta.contreras@example.com",
+  "organization": "Northwind Labs",
+  "jobTitle": "Distinguished Engineer",
+  "bio": "Marta has spent twelve years building distributed systems and teaches backend design.",
+  "photoUrl": "https://example.com/photos/marta-v2.jpg"
+}
+
+### Delete a speaker (200)
+DELETE {{host}}/speakers/{{speakerId}}
+
+###############################################################################
+# SPEAKERS - error cases
+###############################################################################
+
+### Validation failure: several bad fields at once (400)
+POST {{host}}/speakers
+Content-Type: application/json
+
+{
+  "firstName": "M",
+  "email": "not-an-email",
+  "photoUrl": "ftp://wrong-protocol"
+}
+
+### Duplicate email (409) - run the create request twice
+POST {{host}}/speakers
+Content-Type: application/json
+
+{
+  "firstName": "Marta",
+  "lastName": "Contreras",
+  "email": "marta.contreras@example.com",
+  "organization": "Northwind Labs",
+  "jobTitle": "Principal Engineer",
+  "bio": "Marta has spent twelve years building distributed systems and teaches backend design.",
+  "photoUrl": "https://example.com/photos/marta-contreras.jpg"
+}
+
+### Malformed ObjectId (400)
+GET {{host}}/speakers/not-a-valid-id
+
+### Well formed but missing id (404)
+GET {{host}}/speakers/66b0f2c8a1d4e5f60912ab99
+
+###############################################################################
+# EVENTS
+###############################################################################
+
+### Create an event (201)
+# @name createEvent
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "title": "BYU Pathway Developer Summit 2026",
+  "description": "A three-day conference covering web development, cloud infrastructure and career growth.",
+  "startDate": "2026-09-14T09:00:00.000Z",
+  "endDate": "2026-09-16T17:00:00.000Z",
+  "location": "Salt Palace Convention Center, Salt Lake City, UT",
+  "capacity": 500,
+  "category": "technology",
+  "ticketPrice": 149.99,
+  "status": "published",
+  "organizerId": "66b0f2c8a1d4e5f60912ab34"
+}
+
+### Capture the id returned above
+@eventId = {{createEvent.response.body.data._id}}
+
+### Get all events
+GET {{host}}/events
+
+### Filter events by status and category
+GET {{host}}/events?status=published&category=technology
+
+### Find events by category (dedicated route)
+GET {{host}}/events/findByCategory?category=technology
+
+### Get one event
+GET {{host}}/events/{{eventId}}
+
+### Sessions for an event (empty until the sessions collection is added)
+GET {{host}}/events/{{eventId}}/sessions
+
+### Replace an event (200) - createdAt is preserved from the original record
+PUT {{host}}/events/{{eventId}}
+Content-Type: application/json
+
+{
+  "title": "BYU Pathway Developer Summit 2026 (Updated)",
+  "description": "A three-day conference covering web development, cloud infrastructure and career growth.",
+  "startDate": "2026-09-14T09:00:00.000Z",
+  "endDate": "2026-09-16T17:00:00.000Z",
+  "location": "Salt Palace Convention Center, Salt Lake City, UT",
+  "capacity": 750,
+  "category": "technology",
+  "ticketPrice": 179.99,
+  "status": "published",
+  "organizerId": "66b0f2c8a1d4e5f60912ab34"
+}
+
+### Delete an event (200)
+DELETE {{host}}/events/{{eventId}}
+
+###############################################################################
+# EVENTS - error cases
+###############################################################################
+
+### Missing and invalid fields (400)
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "title": "No",
+  "capacity": -5,
+  "category": "underwater-basket-weaving",
+  "status": "somethingelse"
+}
+
+### endDate before startDate (400, cross-field rule)
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "title": "Backwards Conference",
+  "description": "This event ends before it begins, which the validator must reject.",
+  "startDate": "2026-09-16T09:00:00.000Z",
+  "endDate": "2026-09-14T17:00:00.000Z",
+  "location": "Nowhere, UT",
+  "capacity": 10,
+  "category": "technology",
+  "ticketPrice": 0,
+  "status": "draft",
+  "organizerId": "66b0f2c8a1d4e5f60912ab34"
+}
+
+### Unknown query value (400)
+GET {{host}}/events?status=bogus
+
+### Malformed JSON body (400)
+POST {{host}}/events
+Content-Type: application/json
+
+{ "title": "broken",, }
+
+### Unknown route (404)
+GET {{host}}/this-route-does-not-exist

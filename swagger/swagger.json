@@ -1,0 +1,759 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "ConferenceHub API",
+    "version": "1.0.0",
+    "description": "REST API for organizing multi-day conferences and the events inside them. This release covers the first two collections, events and speakers, with full CRUD, request validation and centralized error handling. Sessions, attendees, registrations and GitHub OAuth follow in the next iteration."
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "tags": [
+    {
+      "name": "Root",
+      "description": "Service information and health"
+    },
+    {
+      "name": "Events",
+      "description": "Conference events (12-field collection)"
+    },
+    {
+      "name": "Speakers",
+      "description": "People who present at sessions (8-field collection)"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Root"
+        ],
+        "summary": "API information",
+        "description": "Confirms the API is running and points to the documentation.",
+        "responses": {
+          "200": {
+            "description": "API metadata"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Root"
+        ],
+        "summary": "Health check",
+        "description": "Used by Render to confirm the service is up.",
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
+          }
+        }
+      }
+    },
+    "/events/": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get all events",
+        "description": "Returns every event sorted by start date. Optionally filtered by status or category.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "cancelled"
+            ]
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by category",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "technology",
+              "business",
+              "health",
+              "education",
+              "science",
+              "arts",
+              "community",
+              "other"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of events"
+          },
+          "400": {
+            "description": "Validation failed - unknown status or category"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Create a new event",
+        "description": "Becomes organizer-only once OAuth is added in Week 06.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Event to create",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EventInput"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Event created"
+          },
+          "400": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/findByCategory": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Find events by category",
+        "description": "Returns every event in the requested category, sorted by start date.",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Category to search for",
+            "required": true,
+            "type": "string",
+            "enum": [
+              "technology",
+              "business",
+              "health",
+              "education",
+              "science",
+              "arts",
+              "community",
+              "other"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching events"
+          },
+          "400": {
+            "description": "Validation failed - category missing or unknown"
+          }
+        }
+      }
+    },
+    "/events/{eventId}": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get a single event by id",
+        "description": "",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested event"
+          },
+          "400": {
+            "description": "Validation failed - eventId is not a valid ObjectId"
+          },
+          "404": {
+            "description": "Event not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Replace an existing event",
+        "description": "PUT replaces the whole document, so every field is required. createdAt is preserved from the original record.",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Full replacement event",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EventInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event updated"
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "404": {
+            "description": "Event not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Delete an event",
+        "description": "Fails with 409 when sessions or registrations still reference this event.",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event deleted"
+          },
+          "400": {
+            "description": "Validation failed - eventId is not a valid ObjectId"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "409": {
+            "description": "Event still has sessions or registrations"
+          }
+        }
+      }
+    },
+    "/events/{eventId}/sessions": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get every session belonging to an event",
+        "description": "The sessions collection is implemented in Week 06; until then this returns an empty list for an existing event.",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessions for this event"
+          },
+          "400": {
+            "description": "Validation failed - eventId is not a valid ObjectId"
+          },
+          "404": {
+            "description": "Event not found"
+          }
+        }
+      }
+    },
+    "/speakers/": {
+      "get": {
+        "tags": [
+          "Speakers"
+        ],
+        "summary": "Get all speakers",
+        "description": "Returns every speaker sorted by last name. Optionally filtered by organization.",
+        "parameters": [
+          {
+            "name": "organization",
+            "in": "query",
+            "description": "Filter by exact organization name",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of speakers"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Speakers"
+        ],
+        "summary": "Create a new speaker",
+        "description": "Becomes organizer-only once OAuth is added in Week 06.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Speaker to create",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SpeakerInput"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Speaker created"
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "409": {
+            "description": "A speaker with that email already exists"
+          }
+        }
+      }
+    },
+    "/speakers/{speakerId}": {
+      "get": {
+        "tags": [
+          "Speakers"
+        ],
+        "summary": "Get a single speaker by id",
+        "description": "",
+        "parameters": [
+          {
+            "name": "speakerId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested speaker"
+          },
+          "400": {
+            "description": "Validation failed - speakerId is not a valid ObjectId"
+          },
+          "404": {
+            "description": "Speaker not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Speakers"
+        ],
+        "summary": "Replace an existing speaker",
+        "description": "PUT replaces the whole document, so every field is required.",
+        "parameters": [
+          {
+            "name": "speakerId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Full replacement speaker",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SpeakerInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Speaker updated"
+          },
+          "400": {
+            "description": "Validation failed"
+          },
+          "404": {
+            "description": "Speaker not found"
+          },
+          "409": {
+            "description": "Another speaker already uses that email"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Speakers"
+        ],
+        "summary": "Delete a speaker",
+        "description": "Fails with 409 when sessions are still assigned to this speaker.",
+        "parameters": [
+          {
+            "name": "speakerId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Speaker deleted"
+          },
+          "400": {
+            "description": "Validation failed - speakerId is not a valid ObjectId"
+          },
+          "404": {
+            "description": "Speaker not found"
+          },
+          "409": {
+            "description": "Speaker is still assigned to sessions"
+          }
+        }
+      }
+    },
+    "/speakers/{speakerId}/sessions": {
+      "get": {
+        "tags": [
+          "Speakers"
+        ],
+        "summary": "Get every session assigned to a speaker",
+        "description": "The sessions collection is implemented in Week 06; until then this returns an empty list for an existing speaker.",
+        "parameters": [
+          {
+            "name": "speakerId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "24-character MongoDB ObjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessions for this speaker"
+          },
+          "400": {
+            "description": "Validation failed - speakerId is not a valid ObjectId"
+          },
+          "404": {
+            "description": "Speaker not found"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "EventInput": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "example": "BYU Pathway Developer Summit 2026"
+        },
+        "description": {
+          "type": "string",
+          "example": "A three-day conference covering web development, cloud infrastructure and career growth."
+        },
+        "startDate": {
+          "type": "string",
+          "example": "2026-09-14T09:00:00.000Z"
+        },
+        "endDate": {
+          "type": "string",
+          "example": "2026-09-16T17:00:00.000Z"
+        },
+        "location": {
+          "type": "string",
+          "example": "Salt Palace Convention Center, Salt Lake City, UT"
+        },
+        "capacity": {
+          "type": "number",
+          "example": 500
+        },
+        "category": {
+          "type": "string",
+          "example": "technology"
+        },
+        "ticketPrice": {
+          "type": "number",
+          "example": 149.99
+        },
+        "status": {
+          "type": "string",
+          "example": "published"
+        },
+        "organizerId": {
+          "type": "string",
+          "example": "66b0f2c8a1d4e5f60912ab34"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "startDate",
+        "endDate",
+        "location",
+        "capacity",
+        "category",
+        "ticketPrice",
+        "status",
+        "organizerId"
+      ]
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "example": "66b0f2c8a1d4e5f60912ab30"
+        },
+        "title": {
+          "type": "string",
+          "example": "BYU Pathway Developer Summit 2026"
+        },
+        "description": {
+          "type": "string",
+          "example": "A three-day conference covering web development, cloud infrastructure and career growth."
+        },
+        "startDate": {
+          "type": "string",
+          "example": "2026-09-14T09:00:00.000Z"
+        },
+        "endDate": {
+          "type": "string",
+          "example": "2026-09-16T17:00:00.000Z"
+        },
+        "location": {
+          "type": "string",
+          "example": "Salt Palace Convention Center, Salt Lake City, UT"
+        },
+        "capacity": {
+          "type": "number",
+          "example": 500
+        },
+        "category": {
+          "type": "string",
+          "example": "technology"
+        },
+        "ticketPrice": {
+          "type": "number",
+          "example": 149.99
+        },
+        "status": {
+          "type": "string",
+          "example": "published"
+        },
+        "organizerId": {
+          "type": "string",
+          "example": "66b0f2c8a1d4e5f60912ab34"
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2026-08-06T12:00:00.000Z"
+        }
+      }
+    },
+    "SpeakerInput": {
+      "type": "object",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "example": "Marta"
+        },
+        "lastName": {
+          "type": "string",
+          "example": "Contreras"
+        },
+        "email": {
+          "type": "string",
+          "example": "marta.contreras@example.com"
+        },
+        "organization": {
+          "type": "string",
+          "example": "Northwind Labs"
+        },
+        "jobTitle": {
+          "type": "string",
+          "example": "Principal Engineer"
+        },
+        "bio": {
+          "type": "string",
+          "example": "Marta has spent twelve years building distributed systems and teaches backend design."
+        },
+        "photoUrl": {
+          "type": "string",
+          "example": "https://example.com/photos/marta-contreras.jpg"
+        }
+      },
+      "required": [
+        "firstName",
+        "lastName",
+        "email",
+        "organization",
+        "jobTitle",
+        "bio",
+        "photoUrl"
+      ]
+    },
+    "Speaker": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "example": "66b0f2c8a1d4e5f60912ab31"
+        },
+        "firstName": {
+          "type": "string",
+          "example": "Marta"
+        },
+        "lastName": {
+          "type": "string",
+          "example": "Contreras"
+        },
+        "email": {
+          "type": "string",
+          "example": "marta.contreras@example.com"
+        },
+        "organization": {
+          "type": "string",
+          "example": "Northwind Labs"
+        },
+        "jobTitle": {
+          "type": "string",
+          "example": "Principal Engineer"
+        },
+        "bio": {
+          "type": "string",
+          "example": "Marta has spent twelve years building distributed systems and teaches backend design."
+        },
+        "photoUrl": {
+          "type": "string",
+          "example": "https://example.com/photos/marta-contreras.jpg"
+        }
+      }
+    },
+    "ValidationError": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": false
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "number",
+              "example": 400
+            },
+            "message": {
+              "type": "string",
+              "example": "Validation failed"
+            },
+            "details": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "example": "capacity"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "capacity must be an integer between 1 and 100000"
+                  },
+                  "value": {
+                    "type": "number",
+                    "example": -5
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "NotFoundError": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": false
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "number",
+              "example": 404
+            },
+            "message": {
+              "type": "string",
+              "example": "No event found with id 66b0f2c8a1d4e5f60912ab30"
+            }
+          }
+        }
+      }
+    },
+    "ConflictError": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "example": false
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "number",
+              "example": 409
+            },
+            "message": {
+              "type": "string",
+              "example": "A speaker with the email marta.contreras@example.com already exists"
+            }
+          }
+        }
+      }
+    }
+  }
+}

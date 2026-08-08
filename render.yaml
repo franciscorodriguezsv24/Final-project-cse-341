@@ -1,0 +1,20 @@
+# Render Blueprint. Optional - the same values can be set by hand in the
+# Render dashboard. Secrets are marked sync:false so they are never committed.
+services:
+  - type: web
+    name: conferencehub-api
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_DB_NAME
+        value: conferencehub
+      - key: MONGODB_URI
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
