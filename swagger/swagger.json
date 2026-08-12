@@ -3,7 +3,7 @@
   "info": {
     "title": "ConferenceHub API",
     "version": "2.0.0",
-    "description": "REST API for organizing multi-day conferences and the events inside them. Four collections - events, speakers, sessions and registrations - each with full CRUD, request validation and centralized error handling.\n\nGET routes are public. Every POST, PUT and DELETE requires a GitHub sign-in: open /auth/github in a browser tab, approve the app, and you are returned here with a session cookie that Try it out reuses automatically. /auth/status shows who you are and /auth/logout ends the session. Without it, protected routes answer 401."
+    "description": "REST API for organizing multi-day conferences and the events inside them. Four collections - events, speakers, sessions and registrations - each with full CRUD, request validation and centralized error handling.\n\n## Authentication\n\n### ➡️ [Sign in with GitHub](/auth/github)\n\nGET routes are public. Every POST, PUT and DELETE requires a sign-in. Use the link above - it navigates this tab to GitHub and brings you straight back here with a session cookie, which Try it out then reuses automatically on the protected routes.\n\nDo **not** press Execute on `GET /auth/github`: that route answers with a redirect to github.com, and a browser will not let this page's JavaScript follow a redirect to another site, so it reports \"Failed to fetch\". The route is working - it simply has to be followed by the browser itself, which is what the link above does.\n\nCheck [/auth/status](/auth/status) to see who you are signed in as, and [/auth/logout](/auth/logout) to end the session. Signed out, protected routes answer 401."
   },
   "host": "localhost:8080",
   "basePath": "/",
@@ -77,7 +77,7 @@
           "Auth"
         ],
         "summary": "Start GitHub OAuth login",
-        "description": "Open this route in a browser. It redirects to GitHub, and GitHub redirects back to /auth/github/callback with a session cookie set. Try it out will not follow the redirect - use the browser address bar.",
+        "description": "### ➡️ [Click here to sign in](/auth/github) <br><br> Do NOT press Execute below. This route answers with a 302 redirect to github.com, and the browser blocks the JavaScript on this page from following a redirect to another site, so Try it out reports \"Failed to fetch\" even though the route worked. Authorization has to be a real browser navigation so you can see github.com in the address bar before entering credentials. Use the link above, approve the app, and GitHub returns you to /auth/github/callback, which creates the session and sends you back to /api-docs.",
         "responses": {
           "302": {
             "description": "Redirect to GitHub for authorization"

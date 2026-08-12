@@ -24,7 +24,7 @@ router.get('/github', ensureOAuthConfigured, (req, res, next) => {
   /*
     #swagger.tags = ['Auth']
     #swagger.summary = 'Start GitHub OAuth login'
-    #swagger.description = 'Open this route in a browser. It redirects to GitHub, and GitHub redirects back to /auth/github/callback with a session cookie set. Try it out will not follow the redirect - use the browser address bar.'
+    #swagger.description = '### ➡️ [Click here to sign in](/auth/github) <br><br> Do NOT press Execute below. This route answers with a 302 redirect to github.com, and the browser blocks the JavaScript on this page from following a redirect to another site, so Try it out reports "Failed to fetch" even though the route worked. Authorization has to be a real browser navigation so you can see github.com in the address bar before entering credentials. Use the link above, approve the app, and GitHub returns you to /auth/github/callback, which creates the session and sends you back to /api-docs.'
     #swagger.responses[302] = { description: 'Redirect to GitHub for authorization' }
     #swagger.responses[503] = { description: 'OAuth is not configured on this server' }
   */
