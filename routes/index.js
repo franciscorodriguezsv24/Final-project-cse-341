@@ -6,17 +6,22 @@ router.get('/', (req, res) => {
   /*
     #swagger.tags = ['Root']
     #swagger.summary = 'API information'
-    #swagger.description = 'Confirms the API is running and points to the documentation.'
+    #swagger.description = 'Confirms the API is running and points to the documentation and the login route.'
     #swagger.responses[200] = { description: 'API metadata' }
   */
+  const authenticated = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
+
   res.status(200).json({
     success: true,
     name: 'ConferenceHub API',
-    version: '1.0.0',
+    version: '2.0.0',
     documentation: '/api-docs',
-    collections: {
-      implemented: ['events', 'speakers'],
-      planned: ['sessions', 'attendees', 'registrations']
+    collections: ['events', 'speakers', 'sessions', 'registrations'],
+    auth: {
+      login: '/auth/github',
+      status: '/auth/status',
+      logout: '/auth/logout',
+      authenticated
     }
   });
 });
@@ -31,7 +36,10 @@ router.get('/health', (req, res) => {
   res.status(200).json({ success: true, status: 'ok', uptimeSeconds: Math.floor(process.uptime()) });
 });
 
+router.use('/auth', require('./auth'));
 router.use('/events', require('./events'));
 router.use('/speakers', require('./speakers'));
+router.use('/sessions', require('./sessions'));
+router.use('/registrations', require('./registrations'));
 
 module.exports = router;

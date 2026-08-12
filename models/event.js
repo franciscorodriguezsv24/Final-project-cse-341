@@ -25,8 +25,11 @@ const STATUSES = ['draft', 'published', 'cancelled'];
  * Builds the stored document from an already-validated request body. Keeping
  * this in one place means POST and PUT can never drift into storing different
  * shapes for the same collection.
+ *
+ * `organizerId` is passed in rather than read from the body by default, so the
+ * signed-in user owns the event unless one is named explicitly.
  */
-const buildEventDocument = (body, { createdAt = new Date() } = {}) => ({
+const buildEventDocument = (body, { createdAt = new Date(), organizerId } = {}) => ({
   title: body.title,
   description: body.description,
   startDate: new Date(body.startDate),
@@ -36,7 +39,9 @@ const buildEventDocument = (body, { createdAt = new Date() } = {}) => ({
   category: body.category,
   ticketPrice: body.ticketPrice,
   status: body.status,
-  organizerId: new ObjectId(body.organizerId),
+  // The caller passes the organizer resolved from the session; the body value
+  // is only a fallback for an explicitly supplied organizer.
+  organizerId: new ObjectId(organizerId || body.organizerId),
   createdAt
 });
 

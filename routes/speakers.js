@@ -1,6 +1,7 @@
 const express = require('express');
 
 const controller = require('../controllers/speakersController');
+const { requireAuth } = require('../middleware/auth');
 const { handleValidation, idParam, speakerRules } = require('../middleware/validate');
 
 const router = express.Router();
@@ -57,11 +58,11 @@ router.get('/:speakerId/sessions', idParam('speakerId'), handleValidation, (req,
   controller.getSessions(req, res, next);
 });
 
-router.post('/', speakerRules, handleValidation, (req, res, next) => {
+router.post('/', requireAuth, speakerRules, handleValidation, (req, res, next) => {
   /*
     #swagger.tags = ['Speakers']
-    #swagger.summary = 'Create a new speaker'
-    #swagger.description = 'Becomes organizer-only once OAuth is added in Week 06.'
+    #swagger.summary = 'Create a new speaker (protected)'
+    #swagger.description = 'Requires a GitHub sign-in at /auth/github.'
     #swagger.parameters['body'] = {
       in: 'body',
       description: 'Speaker to create',
@@ -70,16 +71,17 @@ router.post('/', speakerRules, handleValidation, (req, res, next) => {
     }
     #swagger.responses[201] = { description: 'Speaker created' }
     #swagger.responses[400] = { description: 'Validation failed' }
+    #swagger.responses[401] = { description: 'Not signed in' }
     #swagger.responses[409] = { description: 'A speaker with that email already exists' }
   */
   controller.create(req, res, next);
 });
 
-router.put('/:speakerId', idParam('speakerId'), speakerRules, handleValidation, (req, res, next) => {
+router.put('/:speakerId', requireAuth, idParam('speakerId'), speakerRules, handleValidation, (req, res, next) => {
   /*
     #swagger.tags = ['Speakers']
-    #swagger.summary = 'Replace an existing speaker'
-    #swagger.description = 'PUT replaces the whole document, so every field is required.'
+    #swagger.summary = 'Replace an existing speaker (protected)'
+    #swagger.description = 'Requires a GitHub sign-in at /auth/github. PUT replaces the whole document, so every field is required.'
     #swagger.parameters['speakerId'] = {
       in: 'path',
       description: '24-character MongoDB ObjectId',
@@ -94,17 +96,18 @@ router.put('/:speakerId', idParam('speakerId'), speakerRules, handleValidation, 
     }
     #swagger.responses[200] = { description: 'Speaker updated' }
     #swagger.responses[400] = { description: 'Validation failed' }
+    #swagger.responses[401] = { description: 'Not signed in' }
     #swagger.responses[404] = { description: 'Speaker not found' }
     #swagger.responses[409] = { description: 'Another speaker already uses that email' }
   */
   controller.update(req, res, next);
 });
 
-router.delete('/:speakerId', idParam('speakerId'), handleValidation, (req, res, next) => {
+router.delete('/:speakerId', requireAuth, idParam('speakerId'), handleValidation, (req, res, next) => {
   /*
     #swagger.tags = ['Speakers']
-    #swagger.summary = 'Delete a speaker'
-    #swagger.description = 'Fails with 409 when sessions are still assigned to this speaker.'
+    #swagger.summary = 'Delete a speaker (protected)'
+    #swagger.description = 'Requires a GitHub sign-in at /auth/github. Fails with 409 when sessions are still assigned to this speaker.'
     #swagger.parameters['speakerId'] = {
       in: 'path',
       description: '24-character MongoDB ObjectId',
@@ -113,6 +116,7 @@ router.delete('/:speakerId', idParam('speakerId'), handleValidation, (req, res, 
     }
     #swagger.responses[200] = { description: 'Speaker deleted' }
     #swagger.responses[400] = { description: 'Validation failed - speakerId is not a valid ObjectId' }
+    #swagger.responses[401] = { description: 'Not signed in' }
     #swagger.responses[404] = { description: 'Speaker not found' }
     #swagger.responses[409] = { description: 'Speaker is still assigned to sessions' }
   */

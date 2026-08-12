@@ -1,6 +1,7 @@
 const express = require('express');
 
 const controller = require('../controllers/eventsController');
+const { requireAuth } = require('../middleware/auth');
 const {
   handleValidation,
   idParam,
@@ -91,11 +92,11 @@ router.get('/:eventId/sessions', idParam('eventId'), handleValidation, (req, res
   controller.getSessions(req, res, next);
 });
 
-router.post('/', eventRules, handleValidation, (req, res, next) => {
+router.post('/', requireAuth, eventRules, handleValidation, (req, res, next) => {
   /*
     #swagger.tags = ['Events']
-    #swagger.summary = 'Create a new event'
-    #swagger.description = 'Becomes organizer-only once OAuth is added in Week 06.'
+    #swagger.summary = 'Create a new event (protected)'
+    #swagger.description = 'Requires a GitHub sign-in at /auth/github. organizerId is optional: when it is omitted the signed-in user becomes the organizer.'
     #swagger.parameters['body'] = {
       in: 'body',
       description: 'Event to create',
@@ -104,15 +105,16 @@ router.post('/', eventRules, handleValidation, (req, res, next) => {
     }
     #swagger.responses[201] = { description: 'Event created' }
     #swagger.responses[400] = { description: 'Validation failed' }
+    #swagger.responses[401] = { description: 'Not signed in' }
   */
   controller.create(req, res, next);
 });
 
-router.put('/:eventId', idParam('eventId'), eventRules, handleValidation, (req, res, next) => {
+router.put('/:eventId', requireAuth, idParam('eventId'), eventRules, handleValidation, (req, res, next) => {
   /*
     #swagger.tags = ['Events']
-    #swagger.summary = 'Replace an existing event'
-    #swagger.description = 'PUT replaces the whole document, so every field is required. createdAt is preserved from the original record.'
+    #swagger.summary = 'Replace an existing event (protected)'
+    #swagger.description = 'Requires a GitHub sign-in at /auth/github. PUT replaces the whole document, so every field is required. createdAt and the original organizer are preserved.'
     #swagger.parameters['eventId'] = {
       in: 'path',
       description: '24-character MongoDB ObjectId',
@@ -127,16 +129,17 @@ router.put('/:eventId', idParam('eventId'), eventRules, handleValidation, (req, 
     }
     #swagger.responses[200] = { description: 'Event updated' }
     #swagger.responses[400] = { description: 'Validation failed' }
+    #swagger.responses[401] = { description: 'Not signed in' }
     #swagger.responses[404] = { description: 'Event not found' }
   */
   controller.update(req, res, next);
 });
 
-router.delete('/:eventId', idParam('eventId'), handleValidation, (req, res, next) => {
+router.delete('/:eventId', requireAuth, idParam('eventId'), handleValidation, (req, res, next) => {
   /*
     #swagger.tags = ['Events']
-    #swagger.summary = 'Delete an event'
-    #swagger.description = 'Fails with 409 when sessions or registrations still reference this event.'
+    #swagger.summary = 'Delete an event (protected)'
+    #swagger.description = 'Requires a GitHub sign-in at /auth/github. Fails with 409 when sessions or registrations still reference this event.'
     #swagger.parameters['eventId'] = {
       in: 'path',
       description: '24-character MongoDB ObjectId',
@@ -145,6 +148,7 @@ router.delete('/:eventId', idParam('eventId'), handleValidation, (req, res, next
     }
     #swagger.responses[200] = { description: 'Event deleted' }
     #swagger.responses[400] = { description: 'Validation failed - eventId is not a valid ObjectId' }
+    #swagger.responses[401] = { description: 'Not signed in' }
     #swagger.responses[404] = { description: 'Event not found' }
     #swagger.responses[409] = { description: 'Event still has sessions or registrations' }
   */

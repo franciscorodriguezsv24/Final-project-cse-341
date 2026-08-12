@@ -4,11 +4,42 @@
 @host = http://localhost:8080
 # @host = https://conferencehub-api.onrender.com
 
-### Root - service information
+### Root - service information (also reports whether you are signed in)
 GET {{host}}/
 
 ### Health check
 GET {{host}}/health
+
+###############################################################################
+# AUTH
+#
+# GET routes are public. Every POST, PUT and DELETE needs a session cookie.
+#
+# To get one:
+#   1. Open {{host}}/auth/github in a browser and approve the app.
+#   2. In DevTools -> Application -> Cookies, copy the `conferencehub.sid` value.
+#   3. Paste it into @sid below (the value only, not the name).
+#
+# The write requests in this file already send it as a Cookie header.
+###############################################################################
+
+@sid = paste-the-conferencehub.sid-cookie-value-here
+@cookie = conferencehub.sid={{sid}}
+
+### Who am I (200 - authenticated true or false)
+GET {{host}}/auth/status
+
+### Start the GitHub login (open this one in a browser, not here)
+GET {{host}}/auth/github
+
+### Log out (200)
+GET {{host}}/auth/logout
+
+### Any write without the cookie (401)
+POST {{host}}/speakers
+Content-Type: application/json
+
+{ "firstName": "Nobody" }
 
 ###############################################################################
 # SPEAKERS
@@ -18,6 +49,7 @@ GET {{host}}/health
 # @name createSpeaker
 POST {{host}}/speakers
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "firstName": "Marta",
@@ -41,12 +73,13 @@ GET {{host}}/speakers?organization=Northwind Labs
 ### Get one speaker
 GET {{host}}/speakers/{{speakerId}}
 
-### Sessions for a speaker (empty until the sessions collection is added)
+### Sessions for a speaker
 GET {{host}}/speakers/{{speakerId}}/sessions
 
 ### Replace a speaker (200)
 PUT {{host}}/speakers/{{speakerId}}
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "firstName": "Marta",
@@ -60,6 +93,7 @@ Content-Type: application/json
 
 ### Delete a speaker (200)
 DELETE {{host}}/speakers/{{speakerId}}
+Cookie: {{cookie}}
 
 ###############################################################################
 # SPEAKERS - error cases
@@ -68,6 +102,7 @@ DELETE {{host}}/speakers/{{speakerId}}
 ### Validation failure: several bad fields at once (400)
 POST {{host}}/speakers
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "firstName": "M",
@@ -78,6 +113,7 @@ Content-Type: application/json
 ### Duplicate email (409) - run the create request twice
 POST {{host}}/speakers
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "firstName": "Marta",
@@ -99,10 +135,11 @@ GET {{host}}/speakers/66b0f2c8a1d4e5f60912ab99
 # EVENTS
 ###############################################################################
 
-### Create an event (201)
+### Create an event (201) - organizerId is omitted, so the signed-in user owns it
 # @name createEvent
 POST {{host}}/events
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "title": "BYU Pathway Developer Summit 2026",
@@ -113,8 +150,7 @@ Content-Type: application/json
   "capacity": 500,
   "category": "technology",
   "ticketPrice": 149.99,
-  "status": "published",
-  "organizerId": "66b0f2c8a1d4e5f60912ab34"
+  "status": "published"
 }
 
 ### Capture the id returned above
@@ -132,12 +168,13 @@ GET {{host}}/events/findByCategory?category=technology
 ### Get one event
 GET {{host}}/events/{{eventId}}
 
-### Sessions for an event (empty until the sessions collection is added)
+### Sessions for an event
 GET {{host}}/events/{{eventId}}/sessions
 
-### Replace an event (200) - createdAt is preserved from the original record
+### Replace an event (200) - createdAt and the organizer are preserved
 PUT {{host}}/events/{{eventId}}
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "title": "BYU Pathway Developer Summit 2026 (Updated)",
@@ -148,12 +185,8 @@ Content-Type: application/json
   "capacity": 750,
   "category": "technology",
   "ticketPrice": 179.99,
-  "status": "published",
-  "organizerId": "66b0f2c8a1d4e5f60912ab34"
+  "status": "published"
 }
-
-### Delete an event (200)
-DELETE {{host}}/events/{{eventId}}
 
 ###############################################################################
 # EVENTS - error cases
@@ -162,6 +195,7 @@ DELETE {{host}}/events/{{eventId}}
 ### Missing and invalid fields (400)
 POST {{host}}/events
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "title": "No",
@@ -173,6 +207,7 @@ Content-Type: application/json
 ### endDate before startDate (400, cross-field rule)
 POST {{host}}/events
 Content-Type: application/json
+Cookie: {{cookie}}
 
 {
   "title": "Backwards Conference",
@@ -183,8 +218,7 @@ Content-Type: application/json
   "capacity": 10,
   "category": "technology",
   "ticketPrice": 0,
-  "status": "draft",
-  "organizerId": "66b0f2c8a1d4e5f60912ab34"
+  "status": "draft"
 }
 
 ### Unknown query value (400)
@@ -193,8 +227,251 @@ GET {{host}}/events?status=bogus
 ### Malformed JSON body (400)
 POST {{host}}/events
 Content-Type: application/json
+Cookie: {{cookie}}
 
 { "title": "broken",, }
+
+###############################################################################
+# SESSIONS
+###############################################################################
+
+### Create a session (201) - needs a real eventId and speakerId
+# @name createSession
+POST {{host}}/sessions
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "speakerId": "{{speakerId}}",
+  "title": "Designing REST APIs that survive contact with real clients",
+  "description": "A practical hour on resource modelling, status codes, validation and the errors that only show up in production.",
+  "startTime": "2026-09-14T10:00:00.000Z",
+  "endTime": "2026-09-14T11:00:00.000Z",
+  "room": "Hall B",
+  "track": "backend",
+  "capacity": 120
+}
+
+### Capture the id returned above
+@sessionId = {{createSession.response.body.data._id}}
+
+### Get all sessions
+GET {{host}}/sessions
+
+### Filter sessions by event
+GET {{host}}/sessions?eventId={{eventId}}
+
+### Filter sessions by track
+GET {{host}}/sessions?track=backend
+
+### Get one session
+GET {{host}}/sessions/{{sessionId}}
+
+### Replace a session (200)
+PUT {{host}}/sessions/{{sessionId}}
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "speakerId": "{{speakerId}}",
+  "title": "Designing REST APIs that survive contact with real clients",
+  "description": "A practical hour on resource modelling, status codes, validation and the errors that only show up in production.",
+  "startTime": "2026-09-14T10:00:00.000Z",
+  "endTime": "2026-09-14T12:00:00.000Z",
+  "room": "Hall C",
+  "track": "backend",
+  "capacity": 200
+}
+
+### Delete a session (200)
+DELETE {{host}}/sessions/{{sessionId}}
+Cookie: {{cookie}}
+
+###############################################################################
+# SESSIONS - error cases
+###############################################################################
+
+### endTime before startTime (400, cross-field rule)
+POST {{host}}/sessions
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "speakerId": "{{speakerId}}",
+  "title": "Time-travelling talk",
+  "description": "This talk ends before it begins, which the validator must reject.",
+  "startTime": "2026-09-14T11:00:00.000Z",
+  "endTime": "2026-09-14T10:00:00.000Z",
+  "room": "Hall B",
+  "track": "general",
+  "capacity": 50
+}
+
+### References that do not exist (400, both fields reported at once)
+POST {{host}}/sessions
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "66b0f2c8a1d4e5f60912ab99",
+  "speakerId": "66b0f2c8a1d4e5f60912ab98",
+  "title": "Talk with no event and no speaker",
+  "description": "Both references point at documents that do not exist in the database.",
+  "startTime": "2026-09-14T10:00:00.000Z",
+  "endTime": "2026-09-14T11:00:00.000Z",
+  "room": "Hall B",
+  "track": "general",
+  "capacity": 50
+}
+
+### Room double-booking (409) - run the create session request twice
+POST {{host}}/sessions
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "speakerId": "{{speakerId}}",
+  "title": "A different talk in the same room at the same time",
+  "description": "The room conflict rule must reject this because Hall B is already taken.",
+  "startTime": "2026-09-14T10:30:00.000Z",
+  "endTime": "2026-09-14T11:30:00.000Z",
+  "room": "Hall B",
+  "track": "general",
+  "capacity": 50
+}
+
+### Unknown track (400)
+GET {{host}}/sessions?track=basket-weaving
+
+###############################################################################
+# REGISTRATIONS
+###############################################################################
+
+### Create a registration (201)
+# @name createRegistration
+POST {{host}}/registrations
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "attendeeName": "Diego Salazar",
+  "attendeeEmail": "diego.salazar@example.com",
+  "ticketType": "general",
+  "quantity": 2,
+  "amountPaid": 299.98,
+  "status": "confirmed"
+}
+
+### Capture the id returned above
+@registrationId = {{createRegistration.response.body.data._id}}
+
+### Get all registrations
+GET {{host}}/registrations
+
+### Filter registrations by event
+GET {{host}}/registrations?eventId={{eventId}}
+
+### Filter registrations by status
+GET {{host}}/registrations?status=confirmed
+
+### Get one registration
+GET {{host}}/registrations/{{registrationId}}
+
+### Replace a registration (200) - registeredAt is preserved
+PUT {{host}}/registrations/{{registrationId}}
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "attendeeName": "Diego Salazar",
+  "attendeeEmail": "diego.salazar@example.com",
+  "ticketType": "vip",
+  "quantity": 3,
+  "amountPaid": 599.97,
+  "status": "confirmed"
+}
+
+### Delete a registration (200) - releases the seats back to the event
+DELETE {{host}}/registrations/{{registrationId}}
+Cookie: {{cookie}}
+
+###############################################################################
+# REGISTRATIONS - error cases
+###############################################################################
+
+### Invalid fields (400)
+POST {{host}}/registrations
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "attendeeName": "D",
+  "attendeeEmail": "not-an-email",
+  "ticketType": "platinum",
+  "quantity": 0,
+  "amountPaid": -50,
+  "status": "refunded"
+}
+
+### Event does not exist (400)
+POST {{host}}/registrations
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "66b0f2c8a1d4e5f60912ab99",
+  "attendeeName": "Diego Salazar",
+  "attendeeEmail": "diego.salazar@example.com",
+  "ticketType": "general",
+  "quantity": 1,
+  "amountPaid": 149.99,
+  "status": "confirmed"
+}
+
+### Duplicate attendee for the same event (409) - run the create twice
+POST {{host}}/registrations
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "attendeeName": "Diego Salazar",
+  "attendeeEmail": "diego.salazar@example.com",
+  "ticketType": "general",
+  "quantity": 1,
+  "amountPaid": 149.99,
+  "status": "confirmed"
+}
+
+### More tickets than seats left (409) - use an event with a small capacity
+POST {{host}}/registrations
+Content-Type: application/json
+Cookie: {{cookie}}
+
+{
+  "eventId": "{{eventId}}",
+  "attendeeName": "Bulk Buyer",
+  "attendeeEmail": "bulk.buyer@example.com",
+  "ticketType": "general",
+  "quantity": 10,
+  "amountPaid": 1499.9,
+  "status": "confirmed"
+}
+
+###############################################################################
+# CLEANUP
+###############################################################################
+
+### Delete an event that still has sessions or registrations (409)
+DELETE {{host}}/events/{{eventId}}
+Cookie: {{cookie}}
 
 ### Unknown route (404)
 GET {{host}}/this-route-does-not-exist

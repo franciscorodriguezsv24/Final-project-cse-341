@@ -27,12 +27,23 @@ const initDb = async () => {
 };
 
 /**
- * Indexes planned for the collections that exist so far. The ones for sessions
- * and registrations are added when those collections are implemented.
+ * Indexes backing the queries and uniqueness rules each collection relies on.
+ * Created at startup so a fresh database is correct without a manual step.
  */
 const createIndexes = async (db) => {
   await db.collection('events').createIndex({ startDate: 1 });
   await db.collection('speakers').createIndex({ email: 1 }, { unique: true });
+
+  await db.collection('sessions').createIndex({ eventId: 1, startTime: 1 });
+  await db.collection('sessions').createIndex({ speakerId: 1 });
+
+  // The controller checks for a duplicate registration to return a clear 409;
+  // this index is what actually enforces it under concurrent requests.
+  await db
+    .collection('registrations')
+    .createIndex({ eventId: 1, attendeeEmail: 1 }, { unique: true });
+
+  await db.collection('users').createIndex({ githubId: 1 }, { unique: true });
 };
 
 /**

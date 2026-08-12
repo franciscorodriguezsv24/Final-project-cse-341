@@ -62,8 +62,15 @@ const getSessions = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: sessions.length, data: sessions });
 });
 
+/**
+ * Write routes are behind requireAuth, so req.user is always present here. An
+ * explicit organizerId in the body still wins, which keeps the endpoint usable
+ * for an admin creating an event on someone else's behalf.
+ */
+const resolveOrganizerId = (req) => req.body.organizerId || (req.user && req.user._id);
+
 const create = asyncHandler(async (req, res) => {
-  const event = buildEventDocument(req.body);
+  const event = buildEventDocument(req.body, { organizerId: resolveOrganizerId(req) });
 
   const result = await collection().insertOne(event);
 
@@ -83,7 +90,11 @@ const update = asyncHandler(async (req, res) => {
   }
 
   // PUT replaces the document, but createdAt belongs to the original record.
-  const updated = buildEventDocument(req.body, { createdAt: existing.createdAt });
+  // The organizer likewise stays put unless the body names a new one.
+  const updated = buildEventDocument(req.body, {
+    createdAt: existing.createdAt,
+    organizerId: req.body.organizerId || existing.organizerId
+  });
 
   await collection().replaceOne({ _id: eventId }, updated);
 

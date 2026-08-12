@@ -2,6 +2,8 @@ const { body, param, query, validationResult } = require('express-validator');
 
 const ApiError = require('../utils/ApiError');
 const { CATEGORIES, STATUSES } = require('../models/event');
+const { TRACKS } = require('../models/session');
+const { TICKET_TYPES, REGISTRATION_STATUSES } = require('../models/registration');
 
 /**
  * Collects every express-validator failure into a single 400 response listing
@@ -114,12 +116,10 @@ const eventRules = [
     .isIn(STATUSES)
     .withMessage(`status must be one of: ${STATUSES.join(', ')}`),
 
-  // Until OAuth lands in Week 06 this arrives in the body. Once sessions exist
-  // it is taken from the authenticated user instead of trusting the client.
+  // Optional since OAuth landed: when it is omitted the controller takes the
+  // organizer from the authenticated session rather than trusting the client.
   body('organizerId')
-    .exists({ values: 'falsy' })
-    .withMessage('organizerId is required')
-    .bail()
+    .optional()
     .isMongoId()
     .withMessage('organizerId must be a valid 24-character MongoDB ObjectId')
 ];
@@ -213,11 +213,192 @@ const speakerRules = [
     .withMessage('photoUrl must be a valid http or https URL')
 ];
 
+/* ------------------------------ sessions ------------------------------ */
+
+const sessionRules = [
+  body('eventId')
+    .exists({ values: 'falsy' })
+    .withMessage('eventId is required')
+    .bail()
+    .isMongoId()
+    .withMessage('eventId must be a valid 24-character MongoDB ObjectId'),
+
+  body('speakerId')
+    .exists({ values: 'falsy' })
+    .withMessage('speakerId is required')
+    .bail()
+    .isMongoId()
+    .withMessage('speakerId must be a valid 24-character MongoDB ObjectId'),
+
+  body('title')
+    .exists({ values: 'falsy' })
+    .withMessage('title is required')
+    .bail()
+    .isString()
+    .withMessage('title must be a string')
+    .trim()
+    .isLength({ min: 3, max: 150 })
+    .withMessage('title must be between 3 and 150 characters'),
+
+  body('description')
+    .exists({ values: 'falsy' })
+    .withMessage('description is required')
+    .bail()
+    .isString()
+    .withMessage('description must be a string')
+    .trim()
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('description must be between 10 and 2000 characters'),
+
+  body('startTime')
+    .exists({ values: 'falsy' })
+    .withMessage('startTime is required')
+    .bail()
+    .isISO8601()
+    .withMessage('startTime must be an ISO 8601 date, e.g. 2026-09-14T10:00:00Z'),
+
+  body('endTime')
+    .exists({ values: 'falsy' })
+    .withMessage('endTime is required')
+    .bail()
+    .isISO8601()
+    .withMessage('endTime must be an ISO 8601 date, e.g. 2026-09-14T11:00:00Z')
+    .bail()
+    // Cross-field check: unlike an event, a talk of zero length is meaningless.
+    .custom((value, { req }) => {
+      if (new Date(value) <= new Date(req.body.startTime)) {
+        throw new Error('endTime must be after startTime');
+      }
+      return true;
+    }),
+
+  body('room')
+    .exists({ values: 'falsy' })
+    .withMessage('room is required')
+    .bail()
+    .isString()
+    .withMessage('room must be a string')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('room must be between 1 and 100 characters'),
+
+  body('track')
+    .exists({ values: 'falsy' })
+    .withMessage('track is required')
+    .bail()
+    .isIn(TRACKS)
+    .withMessage(`track must be one of: ${TRACKS.join(', ')}`),
+
+  body('capacity')
+    .exists({ values: 'falsy' })
+    .withMessage('capacity is required')
+    .bail()
+    .isInt({ min: 1, max: 10000 })
+    .withMessage('capacity must be an integer between 1 and 10000')
+    .toInt()
+];
+
+const sessionQueryRules = [
+  query('eventId')
+    .optional()
+    .isMongoId()
+    .withMessage('eventId must be a valid 24-character MongoDB ObjectId'),
+  query('speakerId')
+    .optional()
+    .isMongoId()
+    .withMessage('speakerId must be a valid 24-character MongoDB ObjectId'),
+  query('track')
+    .optional()
+    .isIn(TRACKS)
+    .withMessage(`track must be one of: ${TRACKS.join(', ')}`)
+];
+
+/* ---------------------------- registrations ---------------------------- */
+
+const registrationRules = [
+  body('eventId')
+    .exists({ values: 'falsy' })
+    .withMessage('eventId is required')
+    .bail()
+    .isMongoId()
+    .withMessage('eventId must be a valid 24-character MongoDB ObjectId'),
+
+  body('attendeeName')
+    .exists({ values: 'falsy' })
+    .withMessage('attendeeName is required')
+    .bail()
+    .isString()
+    .withMessage('attendeeName must be a string')
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage('attendeeName must be between 2 and 120 characters'),
+
+  body('attendeeEmail')
+    .exists({ values: 'falsy' })
+    .withMessage('attendeeEmail is required')
+    .bail()
+    .isEmail()
+    .withMessage('attendeeEmail must be a valid email address')
+    .normalizeEmail(),
+
+  body('ticketType')
+    .exists({ values: 'falsy' })
+    .withMessage('ticketType is required')
+    .bail()
+    .isIn(TICKET_TYPES)
+    .withMessage(`ticketType must be one of: ${TICKET_TYPES.join(', ')}`),
+
+  body('quantity')
+    .exists({ values: 'falsy' })
+    .withMessage('quantity is required')
+    .bail()
+    .isInt({ min: 1, max: 10 })
+    .withMessage('quantity must be an integer between 1 and 10')
+    .toInt(),
+
+  // Note: `exists` is not used with `values: 'falsy'` here because a free
+  // ticket legitimately costs 0.
+  body('amountPaid')
+    .exists()
+    .withMessage('amountPaid is required')
+    .bail()
+    .isFloat({ min: 0, max: 100000 })
+    .withMessage('amountPaid must be a number between 0 and 100000')
+    .toFloat(),
+
+  body('status')
+    .exists({ values: 'falsy' })
+    .withMessage('status is required')
+    .bail()
+    .isIn(REGISTRATION_STATUSES)
+    .withMessage(`status must be one of: ${REGISTRATION_STATUSES.join(', ')}`)
+];
+
+const registrationQueryRules = [
+  query('eventId')
+    .optional()
+    .isMongoId()
+    .withMessage('eventId must be a valid 24-character MongoDB ObjectId'),
+  query('status')
+    .optional()
+    .isIn(REGISTRATION_STATUSES)
+    .withMessage(`status must be one of: ${REGISTRATION_STATUSES.join(', ')}`),
+  query('attendeeEmail')
+    .optional()
+    .isEmail()
+    .withMessage('attendeeEmail must be a valid email address')
+    .normalizeEmail()
+];
+
 module.exports = {
   handleValidation,
   idParam,
   eventRules,
   eventQueryRules,
   eventCategoryQueryRule,
-  speakerRules
+  speakerRules,
+  sessionRules,
+  sessionQueryRules,
+  registrationRules,
+  registrationQueryRules
 };
