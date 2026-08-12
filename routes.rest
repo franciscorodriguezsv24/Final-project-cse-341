@@ -2,7 +2,7 @@
 ### Switch @host between local and production to run the same suite against either.
 
 @host = http://localhost:8080
-# @host = https://conferencehub-api.onrender.com
+# @host = https://final-project-cse-341-1b08.onrender.com
 
 ### Root - service information (also reports whether you are signed in)
 GET {{host}}/

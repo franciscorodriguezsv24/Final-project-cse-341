@@ -6,12 +6,12 @@ REST API for organizing multi-day conferences and the events inside them. Built 
 
 | | |
 |---|---|
-| **Live API** | `https://<your-service>.onrender.com` |
-| **Swagger documentation** | `https://<your-service>.onrender.com/api-docs` |
-| **Repository** | `https://github.com/franciscorodriguezsv24/Final-project-cse-341` |
+| **Live API** | <https://final-project-cse-341-1b08.onrender.com> |
+| **Swagger documentation** | <https://final-project-cse-341-1b08.onrender.com/api-docs> |
+| **Repository** | <https://github.com/franciscorodriguezsv24/Final-project-cse-341> |
 | **Video walkthrough** | `https://youtu.be/<video-id>` |
 
-> Replace the three placeholders above once the service is deployed and the video is uploaded.
+> Replace the video placeholder above once the walkthrough is uploaded.
 
 ---
 
@@ -279,7 +279,7 @@ The app is defined in `app.js` and started in `server.js`. That split is what le
 1. Create a **Web Service** pointing at this repository, with automatic deploys from `main`.
 2. Build command `npm install`, start command `npm start`, health check path `/health`.
 3. Add the environment variables `MONGODB_URI`, `MONGODB_DB_NAME`, `NODE_ENV=production`, `CORS_ORIGIN`, `SESSION_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `GITHUB_CALLBACK_URL`.
-4. Register the GitHub OAuth app at <https://github.com/settings/developers> with the callback `https://<your-service>.onrender.com/auth/github/callback`. It must match `GITHUB_CALLBACK_URL` character for character or GitHub refuses the redirect.
+4. Register the GitHub OAuth app at <https://github.com/settings/developers> with the callback `https://final-project-cse-341-1b08.onrender.com/auth/github/callback`. It must match `GITHUB_CALLBACK_URL` character for character or GitHub refuses the redirect. An OAuth app accepts only one callback URL, so local development needs a second app of its own.
 5. In MongoDB Atlas, allow `0.0.0.0/0` under Network Access — Render's free tier has no static outbound IP.
 6. Confirm the deployment at `/health`, the documentation at `/api-docs`, and the login at `/auth/github`.
 
