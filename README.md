@@ -9,9 +9,7 @@ REST API for organizing multi-day conferences and the events inside them. Built 
 | **Live API** | <https://final-project-cse-341-1b08.onrender.com> |
 | **Swagger documentation** | <https://final-project-cse-341-1b08.onrender.com/api-docs> |
 | **Repository** | <https://github.com/franciscorodriguezsv24/Final-project-cse-341> |
-| **Video walkthrough** | `https://youtu.be/<video-id>` |
-
-> Replace the video placeholder above once the walkthrough is uploaded.
+| **Video walkthrough** | <https://youtu.be/1aPzaH-voQs> |
 
 ---
 
@@ -289,9 +287,19 @@ Swagger's `host` and `scheme` are rewritten from the incoming request at serve t
 
 ---
 
-## Individual contributions — Week 06
+## Individual contributions — Week 07 (final deliverable)
 
 This project is being completed individually, so both contributions below are my own.
+
+**Alejandro Rodríguez — contribution 1: getting the deployed service working end to end against the real Render URL.**
+Took the API from "deploys" to "actually usable in a browser." Fixed the CORS configuration that was rejecting requests from the deployed documentation page, and corrected the environment-variable setup that was failing on Render. Replaced every `<your-service>` placeholder across `README.md`, `routes.rest`, and `.env.example` with the real service URL, so the REST client file and the setup instructions both work by copy-paste instead of needing hand-editing. Registered the GitHub OAuth app against the deployed callback URL and verified the full path on the live service: `/health`, `/api-docs`, all four collection GET routes, and a real sign-in round trip. Also removed a GitHub client secret that had been committed to `.env.example`, so what ships in the repository is placeholders only.
+
+**Alejandro Rodríguez — contribution 2: making the Swagger page work as a real REST client, including authentication.**
+Fixed the one place the documentation genuinely misled a reader. `GET /auth/github` answers with a 302 to github.com, and the browser refuses to let Swagger's JavaScript follow a cross-site redirect, so pressing **Execute** reported a red "Failed to fetch" even though the route worked — which reads as a broken API. Added a clickable "Sign in with GitHub" link to the spec description and to the route's own description, so authorization happens as a real browser navigation and the reader lands back on `/api-docs` holding a session cookie that **Try it out** then reuses on all twelve protected routes. Rewrote the top-level API description into a proper authentication section explaining what is public, what needs a sign-in, why Execute fails on that one route, and where to check or end the session. Wrote the recording script that walks the rubric item by item, and confirmed the 70-test suite still passes against the final state of the code.
+
+---
+
+## Individual contributions — Week 06
 
 **Alejandro Rodríguez — contribution 1: the `sessions` and `registrations` collections, with validation on all four collections.**
 Designed and implemented both remaining collections end to end — ten routes, their document shapes (11 fields for `sessions`, 9 for `registrations`), and their `express-validator` rule sets, bringing POST and PUT validation to all four collections. Added the checks that a database schema alone cannot express: a session must name an event and a speaker that actually exist (and reports both bad ids together, in the same response shape as a field error), no two sessions may occupy the same room at overlapping times, one attendee may not register twice for the same event, and an event may not sell more seats than its capacity — with cancelled registrations correctly releasing their seats back. Extended the startup indexes, including the unique compound index that enforces the duplicate-registration rule under concurrent requests.
